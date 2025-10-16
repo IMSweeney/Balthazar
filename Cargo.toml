@@ -1,0 +1,15 @@
+[package]
+name = "balthazar"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy = "0.17"
+avian2d = "0.4"
+
+# Optimize for faster dev builds
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
