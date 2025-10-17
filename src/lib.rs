@@ -11,6 +11,11 @@ pub struct Pole;
 #[derive(Component)]
 pub struct CordSegment;
 
+#[derive(Component)]
+pub struct PoleAttachment {
+    pub pole_entity: Entity,
+}
+
 #[derive(Resource)]
 pub struct CordSystem {
     pub segments: Vec<Entity>,
@@ -22,7 +27,7 @@ pub struct CordSystem {
     pub segment_size: f32,
     pub player_entity: Entity,
     pub is_retracting: bool,
-    pub attached_pole: Option<Entity>,
+    pub attached_pole: Option<Entity>, // Now refers to the attachment point entity
     pub attachment_range: f32,
 }
 
