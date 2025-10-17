@@ -16,6 +16,10 @@ A skeleton Bevy game project ready for development.
 
 - **W/A/S/D**: Apply forces to move the player (connected by rope to pole)
 - Player movement is constrained by rope physics - you can swing around the pole!
+- **Spacebar**: Attach/detach cord from poles
+  - If cord is attached to a pole: disconnect it
+  - If cord is not attached: attach to closest pole within range (100 units)
+- **Shift**: Hold to retract the cord length
 - **Escape**: Close the game window
 
 ## Running the Game
