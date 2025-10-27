@@ -20,12 +20,12 @@ fn main() {
             camera_zoom: true,
             player_rotation: true,
         })
-        .add_systems(Startup, (setup, setup_ui, set_gizmo_width))
+        .add_systems(Startup, (setup, setup_ui))
         .add_systems(Update, (
             move_player,
             cord_retraction_wrapper,
             cord_attachment_wrapper,
-            render_cord_lines,
+            render_cord_meshes,
             camera_follow_player,
             camera_zoom,
             rotate_player,

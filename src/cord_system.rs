@@ -1,22 +1,18 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
-use bevy::gizmos::config::GizmoConfigStore;
-use bevy::gizmos::gizmos::Gizmos;
 
 use crate::components::{Player, CordSegment, CordSystem, PoleAttachment, SystemToggles};
 
-pub fn set_gizmo_width(mut config_store: ResMut<GizmoConfigStore>) {
-    let (config, _) = config_store.config_mut::<DefaultGizmoConfigGroup>();
-    config.line.width = 10.0;
-}
-
-// Render cord as thick splines connecting segments
-pub fn render_cord_lines(
-    mut gizmos: Gizmos,
-    cord_system: Res<CordSystem>,
+// Render cord as textured meshes connecting segments
+pub fn render_cord_meshes(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut cord_system: ResMut<CordSystem>,
     segment_query: Query<&Transform, With<CordSegment>>,
     player_query: Query<&Transform, With<Player>>,
     attachment_query: Query<&Transform, With<PoleAttachment>>,
+    mesh_query: Query<Entity, With<CordMeshSegment>>,
 ) {
     // Collect all positions along the cord
     let mut positions = Vec::new();
@@ -41,44 +37,43 @@ pub fn render_cord_lines(
         positions.push(backpack_pos);
     }
     
-    // Draw thick cubic Bézier curves between points for smooth spline
+    // Remove old mesh entities
+    for entity in cord_system.visual_meshes.drain(..) {
+        if let Ok(entity) = mesh_query.get(entity) {
+            commands.entity(entity).despawn();
+        }
+    }
+    
+    // Create mesh segments between consecutive points
+    let cord_width = 8.0; // Width of the cord visual
     if positions.len() >= 2 {
         for i in 0..positions.len() - 1 {
-            let p0 = positions[i];
-            let p3 = positions[i + 1];
+            let start = positions[i];
+            let end = positions[i + 1];
             
-            // Calculate control points for smooth curves
-            let direction = (p3 - p0).normalize_or_zero();
-            let distance = p0.distance(p3);
-            let control_offset = distance * 0.25; // Control point offset
+            // Calculate the midpoint, length, and rotation for the segment
+            let midpoint = (start + end) / 2.0;
+            let diff = end - start;
+            let length = diff.length();
+            let angle = diff.y.atan2(diff.x);
             
-            // Create control points that follow the tangent direction
-            let p1 = p0 + direction * control_offset;
-            let p2 = p3 - direction * control_offset;
+            // Create a rectangular mesh for this segment
+            let mesh_entity = commands.spawn((
+                Mesh2d(meshes.add(Rectangle::new(length, cord_width))),
+                MeshMaterial2d(materials.add(ColorMaterial::from(Color::srgb(0.1, 0.1, 0.1)))), // Dark gray/black cord
+                Transform::from_translation(midpoint.extend(0.0))
+                    .with_rotation(Quat::from_rotation_z(angle)),
+                CordMeshSegment,
+            )).id();
             
-            // Calculate Bézier points once
-            let points: Vec<Vec2> = (0..=64).map(|t| {
-                let t = t as f32 / 64.0;
-                // Cubic Bézier interpolation
-                let one_minus_t = 1.0 - t;
-                let one_minus_t_sq = one_minus_t * one_minus_t;
-                let one_minus_t_cubed = one_minus_t_sq * one_minus_t;
-                let t_sq = t * t;
-                let t_cubed = t_sq * t;
-                
-                one_minus_t_cubed * p0
-                    + 3.0 * one_minus_t_sq * t * p1
-                    + 3.0 * one_minus_t * t_sq * p2
-                    + t_cubed * p3
-            }).collect();
-            
-            // Draw black cord (thicker)
-            for j in 0..points.len() - 1 {
-                gizmos.line_2d(points[j], points[j + 1], Color::BLACK);
-            }
+            cord_system.visual_meshes.push(mesh_entity);
         }
     }
 }
+
+// Component to mark visual cord mesh segments
+#[derive(Component)]
+pub struct CordMeshSegment;
 
 
 pub fn handle_cord_retraction(
