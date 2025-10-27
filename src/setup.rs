@@ -1,6 +1,6 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
-use crate::components::{Player, Pole, CordSegment, PoleAttachment, CordSystem};
+use crate::components::{Player, Pole, CordSegment, PoleAttachment, CordSystem, CordMaterial};
 
 #[derive(PhysicsLayer, Default)]
 enum LayerNames {
@@ -14,7 +14,52 @@ pub fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    mut images: ResMut<Assets<Image>>,
 ) {
+    
+    // Create cord texture: black with thin purple line running along length
+    let texture_width = 32;  // Width is along the cord length
+    let texture_height = 8;  // Height is across the cord width
+    let mut texture_data = vec![0u8; (texture_width * texture_height * 4) as usize];
+    
+    for y in 0..texture_height {
+        for x in 0..texture_width {
+            let idx = ((y * texture_width + x) * 4) as usize;
+            
+            // Check if this is the center line (thin purple line running horizontally in texture)
+            if y == texture_height / 2 || y == texture_height / 2 - 1 {
+                // Purple line
+                texture_data[idx] = 128;     // R
+                texture_data[idx + 1] = 0;   // G
+                texture_data[idx + 2] = 128; // B
+                texture_data[idx + 3] = 255; // A
+            } else {
+                // Black background
+                texture_data[idx] = 0;       // R
+                texture_data[idx + 1] = 0;   // G
+                texture_data[idx + 2] = 0;   // B
+                texture_data[idx + 3] = 255; // A
+            }
+        }
+    }
+    
+    let cord_texture = images.add(Image::new(
+        bevy::render::render_resource::Extent3d {
+            width: texture_width,
+            height: texture_height,
+            depth_or_array_layers: 1,
+        },
+        bevy::render::render_resource::TextureDimension::D2,
+        texture_data,
+        bevy::render::render_resource::TextureFormat::Rgba8UnormSrgb,
+        bevy::asset::RenderAssetUsages::RENDER_WORLD,
+    ));
+    
+    let cord_material = materials.add(ColorMaterial::from(cord_texture));
+    
+    commands.insert_resource(CordMaterial {
+        material: cord_material,
+    });
     
     // Spawn 2D camera with orthographic projection for isometric view
     commands.spawn((

@@ -44,3 +44,8 @@ pub struct SystemToggles {
     pub camera_zoom: bool,
     pub player_rotation: bool,
 }
+
+#[derive(Resource)]
+pub struct CordMaterial {
+    pub material: Handle<ColorMaterial>,
+}

@@ -1,14 +1,14 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use crate::components::{Player, CordSegment, CordSystem, PoleAttachment, SystemToggles};
+use crate::components::{Player, CordSegment, CordSystem, PoleAttachment, SystemToggles, CordMaterial};
 
 // Render cord as textured meshes connecting segments
 pub fn render_cord_meshes(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
     mut cord_system: ResMut<CordSystem>,
+    cord_material: Res<CordMaterial>,
     segment_query: Query<&Transform, With<CordSegment>>,
     player_query: Query<&Transform, With<Player>>,
     attachment_query: Query<&Transform, With<PoleAttachment>>,
@@ -60,9 +60,10 @@ pub fn render_cord_meshes(
             // Create a rectangular mesh for this segment
             let mesh_entity = commands.spawn((
                 Mesh2d(meshes.add(Rectangle::new(length, cord_width))),
-                MeshMaterial2d(materials.add(ColorMaterial::from(Color::srgb(0.1, 0.1, 0.1)))), // Dark gray/black cord
-                Transform::from_translation(midpoint.extend(0.0))
+                MeshMaterial2d(cord_material.material.clone()), // Use textured material
+                Transform::from_translation(midpoint.extend(0.0)) // Same Z as game objects
                     .with_rotation(Quat::from_rotation_z(angle)),
+                GlobalZIndex(-1), // Render behind other entities
                 CordMeshSegment,
             )).id();
             
