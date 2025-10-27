@@ -1,14 +1,88 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use crate::{Player, Pole, CordSegment, CordSystem};
+use crate::components::{Player, CordSegment, CordSystem, PoleAttachment, SystemToggles, CordMaterial};
+
+// Render cord as textured meshes connecting segments
+pub fn render_cord_meshes(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut cord_system: ResMut<CordSystem>,
+    cord_material: Res<CordMaterial>,
+    segment_query: Query<&Transform, With<CordSegment>>,
+    player_query: Query<&Transform, With<Player>>,
+    attachment_query: Query<&Transform, With<PoleAttachment>>,
+    mesh_query: Query<Entity, With<CordMeshSegment>>,
+) {
+    // Collect all positions along the cord
+    let mut positions = Vec::new();
+    
+    // Start from attachment point if attached
+    if let Some(attached_pole) = cord_system.attached_pole {
+        if let Ok(attachment_transform) = attachment_query.get(attached_pole) {
+            positions.push(attachment_transform.translation.truncate());
+        }
+    }
+    
+    // Add all segment positions
+    for &segment_entity in &cord_system.segments {
+        if let Ok(transform) = segment_query.get(segment_entity) {
+            positions.push(transform.translation.truncate());
+        }
+    }
+    
+    // Add player backpack position
+    if let Ok(player_transform) = player_query.single() {
+        let backpack_pos = player_transform.translation.truncate() + Vec2::new(0.0, -12.0);
+        positions.push(backpack_pos);
+    }
+    
+    // Remove old mesh entities
+    for entity in cord_system.visual_meshes.drain(..) {
+        if let Ok(entity) = mesh_query.get(entity) {
+            commands.entity(entity).despawn();
+        }
+    }
+    
+    // Create mesh segments between consecutive points
+    let cord_width = 8.0; // Width of the cord visual
+    if positions.len() >= 2 {
+        for i in 0..positions.len() - 1 {
+            let start = positions[i];
+            let end = positions[i + 1];
+            
+            // Calculate the midpoint, length, and rotation for the segment
+            let midpoint = (start + end) / 2.0;
+            let diff = end - start;
+            let length = diff.length();
+            let angle = diff.y.atan2(diff.x);
+            
+            // Create a rectangular mesh for this segment
+            let mesh_entity = commands.spawn((
+                Mesh2d(meshes.add(Rectangle::new(length, cord_width))),
+                MeshMaterial2d(cord_material.material.clone()), // Use textured material
+                Transform::from_translation(midpoint.extend(0.0)) // Same Z as game objects
+                    .with_rotation(Quat::from_rotation_z(angle)),
+                GlobalZIndex(-1), // Render behind other entities
+                CordMeshSegment,
+            )).id();
+            
+            cord_system.visual_meshes.push(mesh_entity);
+        }
+    }
+}
+
+// Component to mark visual cord mesh segments
+#[derive(Component)]
+pub struct CordMeshSegment;
+
 
 pub fn handle_cord_retraction(
     mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut cord_system: ResMut<CordSystem>,
     player_query: Query<&Transform, (With<Player>, Without<CordSegment>)>,
-    pole_query: Query<(Entity, &Transform), (With<Pole>, Without<Player>, Without<CordSegment>)>,
+    attachment_query: Query<&Transform, With<PoleAttachment>>,
     segment_query: Query<&Transform, With<CordSegment>>,
     time: Res<Time>,
 ) {
@@ -32,10 +106,10 @@ pub fn handle_cord_retraction(
         
     } else if !should_retract {
         // Not retracting - check if player is pulling to extend cord
-        if let (Ok(player_transform), Some(attached_pole)) = (player_query.single(), cord_system.attached_pole) {
-            // Find the attached pole's position
-            if let Ok((_, pole_transform)) = pole_query.get(attached_pole) {
-                let distance = player_transform.translation.distance(pole_transform.translation);
+        if let (Ok(player_transform), Some(attached_point)) = (player_query.single(), cord_system.attached_pole) {
+            // Find the attached attachment point's position (already at pole base)
+            if let Ok(attachment_transform) = attachment_query.get(attached_point) {
+                let distance = player_transform.translation.distance(attachment_transform.translation);
                 
                 // If player is pulling at current cord length, extend the cord
                 if distance >= cord_system.current_length * 0.95 && cord_system.current_length < cord_system.max_length {
@@ -76,10 +150,10 @@ pub fn add_cord_segment(
     let direction = (player_pos - last_segment_pos).normalize_or_zero();
     let new_pos = last_segment_pos + direction * cord_system.segment_length;
 
-    // Create new segment
+    // Create new segment (invisible - we render lines instead)
     let new_segment = commands.spawn((
         Sprite {
-            color: Color::srgb(0.2, 0.2, 0.2),
+            color: Color::NONE, // Invisible
             custom_size: Some(Vec2::new(cord_system.segment_size, cord_system.segment_size)),
             ..default()
         },
@@ -104,10 +178,10 @@ pub fn add_cord_segment(
     ).id();
     cord_system.joints.push(new_joint);
 
-    // Add joint connecting new segment to player
+    // Add joint connecting new segment to player (at backpack)
     let player_joint = commands.spawn(
-        DistanceJoint::new(new_segment, cord_system.player_entity)
-            .with_limits(cord_system.segment_length * 0.9, cord_system.segment_length * 1.1)
+        FixedJoint::new(new_segment, cord_system.player_entity)
+            .with_local_anchor2(Vec2::new(0.0, -12.0))
     ).id();
     cord_system.joints.push(player_joint);
 
@@ -135,11 +209,11 @@ pub fn remove_cord_segment(
         }
     }
 
-    // Reconnect the new last segment to the player
+    // Reconnect the new last segment to the player (at backpack)
     if let Some(&new_last_segment) = cord_system.segments.last() {
         let player_joint = commands.spawn(
-            DistanceJoint::new(new_last_segment, cord_system.player_entity)
-                .with_limits(cord_system.segment_length * 0.9, cord_system.segment_length * 1.1)
+            FixedJoint::new(new_last_segment, cord_system.player_entity)
+                .with_local_anchor2(Vec2::new(0.0, -12.0))
         ).id();
         cord_system.joints.push(player_joint);
     }
@@ -149,8 +223,8 @@ pub fn handle_cord_attachment(
     mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut cord_system: ResMut<CordSystem>,
-    player_query: Query<&Transform, (With<Player>, Without<Pole>)>,
-    pole_query: Query<(Entity, &Transform), With<Pole>>,
+    player_query: Query<&Transform, With<Player>>,
+    attachment_query: Query<(Entity, &Transform), With<PoleAttachment>>,
 ) {
     // Check for spacebar press
     if keyboard_input.just_pressed(KeyCode::Space) {
@@ -162,13 +236,13 @@ pub fn handle_cord_attachment(
                     println!("Cord disconnected from pole!");
                 },
                 None => {
-                    // Cord is not attached, try to attach to closest pole
-                    if let Some((closest_pole, _)) = find_closest_pole(
+                    // Cord is not attached, try to attach to closest attachment point
+                    if let Some((closest_attachment, _)) = find_closest_attachment_point(
                         player_transform.translation,
-                        &pole_query,
+                        &attachment_query,
                         cord_system.attachment_range
                     ) {
-                        attach_cord_to_pole(&mut commands, &mut cord_system, closest_pole);
+                        attach_cord_to_pole(&mut commands, &mut cord_system, closest_attachment);
                         println!("Cord attached to pole!");
                     } else {
                         println!("No poles within attachment range!");
@@ -179,23 +253,24 @@ pub fn handle_cord_attachment(
     }
 }
 
-pub fn find_closest_pole(
+pub fn find_closest_attachment_point(
     player_pos: Vec3,
-    pole_query: &Query<(Entity, &Transform), With<Pole>>,
+    attachment_query: &Query<(Entity, &Transform), With<PoleAttachment>>,
     max_range: f32,
 ) -> Option<(Entity, f32)> {
-    let mut closest_pole = None;
+    let mut closest_attachment = None;
     let mut closest_distance = f32::MAX;
     
-    for (entity, transform) in pole_query.iter() {
+    for (entity, transform) in attachment_query.iter() {
+        // Attachment points are already positioned at pole bases, so use position directly
         let distance = player_pos.distance(transform.translation);
         if distance <= max_range && distance < closest_distance {
             closest_distance = distance;
-            closest_pole = Some((entity, distance));
+            closest_attachment = Some((entity, distance));
         }
     }
     
-    closest_pole
+    closest_attachment
 }
 
 pub fn disconnect_cord_from_pole(
@@ -215,12 +290,12 @@ pub fn disconnect_cord_from_pole(
 pub fn attach_cord_to_pole(
     commands: &mut Commands,
     cord_system: &mut CordSystem,
-    pole_entity: Entity,
+    attachment_entity: Entity,
 ) {
-    // Connect the first cord segment to the new pole
+    // Connect the first cord segment to the attachment point (at pole base)
     if let Some(&first_segment) = cord_system.segments.first() {
         let joint = commands.spawn(
-            DistanceJoint::new(pole_entity, first_segment)
+            DistanceJoint::new(attachment_entity, first_segment)
                 .with_limits(cord_system.segment_length * 0.9, cord_system.segment_length * 1.1)
         ).id();
         
@@ -228,6 +303,33 @@ pub fn attach_cord_to_pole(
         cord_system.joints.insert(0, joint);
     }
     
-    // Mark as attached to this pole
-    cord_system.attached_pole = Some(pole_entity);
+    // Mark as attached to this attachment point
+    cord_system.attached_pole = Some(attachment_entity);
+}
+
+// Wrapper functions that check system toggles
+pub fn cord_retraction_wrapper(
+    commands: Commands,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    cord_system: ResMut<CordSystem>,
+    player_query: Query<&Transform, (With<Player>, Without<CordSegment>)>,
+    attachment_query: Query<&Transform, With<PoleAttachment>>,
+    segment_query: Query<&Transform, With<CordSegment>>,
+    time: Res<Time>,
+    toggles: Res<SystemToggles>,
+) {
+    if !toggles.cord_systems { return; }
+    handle_cord_retraction(commands, keyboard_input, cord_system, player_query, attachment_query, segment_query, time);
+}
+
+pub fn cord_attachment_wrapper(
+    commands: Commands,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    cord_system: ResMut<CordSystem>,
+    player_query: Query<&Transform, With<Player>>,
+    attachment_query: Query<(Entity, &Transform), With<PoleAttachment>>,
+    toggles: Res<SystemToggles>,
+) {
+    if !toggles.cord_systems { return; }
+    handle_cord_attachment(commands, keyboard_input, cord_system, player_query, attachment_query);
 }
