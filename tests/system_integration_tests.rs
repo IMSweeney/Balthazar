@@ -1,9 +1,8 @@
 use bevy::prelude::*;
 use bevy::ecs::relationship::Relationship;
-use avian2d::prelude::*;
 
 // Import the types we need for testing
-use balthazar::{Player, Pole, CordSegment, CordSystem};
+use balthazar::{Player, CordSystem};
 
 // Mock SystemToggles for integration testing
 #[derive(Resource)]
@@ -11,8 +10,6 @@ struct TestSystemToggles {
     player_movement: bool,
     cord_systems: bool,
     camera_follow: bool,
-    camera_zoom: bool,
-    player_rotation: bool,
 }
 
 #[test]
@@ -104,8 +101,6 @@ fn test_ui_toggles_affect_all_systems() {
         player_movement: true,
         cord_systems: true,
         camera_follow: true,
-        camera_zoom: true,
-        player_rotation: true,
     };
     
     // Test disabling player movement affects rotation
@@ -231,7 +226,7 @@ fn test_transform_hierarchy_integration() {
     assert_eq!(child_of.get(), player_entity);
     
     // When player moves, children should move with it
-    let player_transform = app.world().get::<Transform>(player_entity).unwrap();
+    let _player_transform = app.world().get::<Transform>(player_entity).unwrap();
     let child_transform = app.world().get::<Transform>(eye_entity).unwrap();
     
     // Child maintains relative offset
@@ -243,7 +238,7 @@ fn test_transform_hierarchy_integration() {
 #[test]
 fn test_state_consistency_across_systems() {
     // Test that state remains consistent across all systems
-    let mut cord_system = CordSystem {
+    let cord_system = CordSystem {
         segments: vec![Entity::from_bits(1), Entity::from_bits(2), Entity::from_bits(3)],
         joints: vec![Entity::from_bits(10), Entity::from_bits(11), Entity::from_bits(12)],
         max_length: 150.0,

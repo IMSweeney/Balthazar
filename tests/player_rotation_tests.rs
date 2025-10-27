@@ -18,7 +18,7 @@ fn test_player_rotation_based_on_movement_direction() {
     app.insert_resource(TestSystemToggles { player_rotation: true });
     app.insert_resource(Time::<()>::default());
     
-    let player_entity = app.world_mut().spawn((
+    let _player_entity = app.world_mut().spawn((
         Player,
         LinearVelocity(Vec2::new(100.0, 0.0)), // Moving right
         Transform::from_xyz(0.0, 0.0, 0.0),

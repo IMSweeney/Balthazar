@@ -1,7 +1,84 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
+use bevy::gizmos::config::GizmoConfigStore;
+use bevy::gizmos::gizmos::Gizmos;
 
-use crate::{Player, CordSegment, CordSystem, PoleAttachment};
+use crate::components::{Player, CordSegment, CordSystem, PoleAttachment, SystemToggles};
+
+pub fn set_gizmo_width(mut config_store: ResMut<GizmoConfigStore>) {
+    let (config, _) = config_store.config_mut::<DefaultGizmoConfigGroup>();
+    config.line.width = 10.0;
+}
+
+// Render cord as thick splines connecting segments
+pub fn render_cord_lines(
+    mut gizmos: Gizmos,
+    cord_system: Res<CordSystem>,
+    segment_query: Query<&Transform, With<CordSegment>>,
+    player_query: Query<&Transform, With<Player>>,
+    attachment_query: Query<&Transform, With<PoleAttachment>>,
+) {
+    // Collect all positions along the cord
+    let mut positions = Vec::new();
+    
+    // Start from attachment point if attached
+    if let Some(attached_pole) = cord_system.attached_pole {
+        if let Ok(attachment_transform) = attachment_query.get(attached_pole) {
+            positions.push(attachment_transform.translation.truncate());
+        }
+    }
+    
+    // Add all segment positions
+    for &segment_entity in &cord_system.segments {
+        if let Ok(transform) = segment_query.get(segment_entity) {
+            positions.push(transform.translation.truncate());
+        }
+    }
+    
+    // Add player backpack position
+    if let Ok(player_transform) = player_query.single() {
+        let backpack_pos = player_transform.translation.truncate() + Vec2::new(0.0, -12.0);
+        positions.push(backpack_pos);
+    }
+    
+    // Draw thick cubic Bézier curves between points for smooth spline
+    if positions.len() >= 2 {
+        for i in 0..positions.len() - 1 {
+            let p0 = positions[i];
+            let p3 = positions[i + 1];
+            
+            // Calculate control points for smooth curves
+            let direction = (p3 - p0).normalize_or_zero();
+            let distance = p0.distance(p3);
+            let control_offset = distance * 0.25; // Control point offset
+            
+            // Create control points that follow the tangent direction
+            let p1 = p0 + direction * control_offset;
+            let p2 = p3 - direction * control_offset;
+            
+            // Calculate Bézier points once
+            let points: Vec<Vec2> = (0..=64).map(|t| {
+                let t = t as f32 / 64.0;
+                // Cubic Bézier interpolation
+                let one_minus_t = 1.0 - t;
+                let one_minus_t_sq = one_minus_t * one_minus_t;
+                let one_minus_t_cubed = one_minus_t_sq * one_minus_t;
+                let t_sq = t * t;
+                let t_cubed = t_sq * t;
+                
+                one_minus_t_cubed * p0
+                    + 3.0 * one_minus_t_sq * t * p1
+                    + 3.0 * one_minus_t * t_sq * p2
+                    + t_cubed * p3
+            }).collect();
+            
+            // Draw black cord (thicker)
+            for j in 0..points.len() - 1 {
+                gizmos.line_2d(points[j], points[j + 1], Color::BLACK);
+            }
+        }
+    }
+}
 
 
 pub fn handle_cord_retraction(
@@ -77,10 +154,10 @@ pub fn add_cord_segment(
     let direction = (player_pos - last_segment_pos).normalize_or_zero();
     let new_pos = last_segment_pos + direction * cord_system.segment_length;
 
-    // Create new segment
+    // Create new segment (invisible - we render lines instead)
     let new_segment = commands.spawn((
         Sprite {
-            color: Color::srgb(0.2, 0.2, 0.2),
+            color: Color::NONE, // Invisible
             custom_size: Some(Vec2::new(cord_system.segment_size, cord_system.segment_size)),
             ..default()
         },
@@ -105,10 +182,10 @@ pub fn add_cord_segment(
     ).id();
     cord_system.joints.push(new_joint);
 
-    // Add joint connecting new segment to player
+    // Add joint connecting new segment to player (at backpack)
     let player_joint = commands.spawn(
-        DistanceJoint::new(new_segment, cord_system.player_entity)
-            .with_limits(cord_system.segment_length * 0.9, cord_system.segment_length * 1.1)
+        FixedJoint::new(new_segment, cord_system.player_entity)
+            .with_local_anchor2(Vec2::new(0.0, -12.0))
     ).id();
     cord_system.joints.push(player_joint);
 
@@ -136,11 +213,11 @@ pub fn remove_cord_segment(
         }
     }
 
-    // Reconnect the new last segment to the player
+    // Reconnect the new last segment to the player (at backpack)
     if let Some(&new_last_segment) = cord_system.segments.last() {
         let player_joint = commands.spawn(
-            DistanceJoint::new(new_last_segment, cord_system.player_entity)
-                .with_limits(cord_system.segment_length * 0.9, cord_system.segment_length * 1.1)
+            FixedJoint::new(new_last_segment, cord_system.player_entity)
+                .with_local_anchor2(Vec2::new(0.0, -12.0))
         ).id();
         cord_system.joints.push(player_joint);
     }
@@ -232,4 +309,31 @@ pub fn attach_cord_to_pole(
     
     // Mark as attached to this attachment point
     cord_system.attached_pole = Some(attachment_entity);
+}
+
+// Wrapper functions that check system toggles
+pub fn cord_retraction_wrapper(
+    commands: Commands,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    cord_system: ResMut<CordSystem>,
+    player_query: Query<&Transform, (With<Player>, Without<CordSegment>)>,
+    attachment_query: Query<&Transform, With<PoleAttachment>>,
+    segment_query: Query<&Transform, With<CordSegment>>,
+    time: Res<Time>,
+    toggles: Res<SystemToggles>,
+) {
+    if !toggles.cord_systems { return; }
+    handle_cord_retraction(commands, keyboard_input, cord_system, player_query, attachment_query, segment_query, time);
+}
+
+pub fn cord_attachment_wrapper(
+    commands: Commands,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    cord_system: ResMut<CordSystem>,
+    player_query: Query<&Transform, With<Player>>,
+    attachment_query: Query<(Entity, &Transform), With<PoleAttachment>>,
+    toggles: Res<SystemToggles>,
+) {
+    if !toggles.cord_systems { return; }
+    handle_cord_attachment(commands, keyboard_input, cord_system, player_query, attachment_query);
 }

@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy::input::mouse::MouseWheel;
 
 // Import the types we need for testing
 use balthazar::Player;
@@ -57,7 +56,7 @@ fn test_camera_follow_disabled_when_toggled_off() {
     });
     
     // Create entities
-    let player_entity = app.world_mut().spawn((
+    let _player_entity = app.world_mut().spawn((
         Player,
         Transform::from_xyz(100.0, 200.0, 0.0),
     )).id();

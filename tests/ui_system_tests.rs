@@ -10,8 +10,6 @@ struct TestSystemToggles {
     player_rotation: bool,
 }
 
-#[derive(Component)]
-struct TestToggleButton(String);
 
 #[test]
 fn test_system_toggles_initialization() {
@@ -72,7 +70,7 @@ fn test_toggle_button_system_identification() {
     assert_eq!(buttons.len(), 5);
     
     // Test system name mapping
-    for (label, system_name) in buttons {
+    for (_label, system_name) in buttons {
         match system_name {
             "player_movement" | "cord_systems" | "camera_follow" | "camera_zoom" | "player_rotation" => {
                 // Valid system names

@@ -282,7 +282,6 @@ fn test_pole_attachment_detachment() {
 #[test]
 fn test_find_closest_pole_within_range() {
     use bevy::prelude::*;
-    use balthazar::{Pole};
     
     // Mock pole positions
     let player_pos = Vec3::new(0.0, 0.0, 0.0);
@@ -394,7 +393,7 @@ fn test_segment_management_on_extension() {
 
 #[test]
 fn test_minimum_segments_maintained() {
-    let mut cord_system = CordSystem {
+    let cord_system = CordSystem {
         segments: vec![Entity::from_bits(1), Entity::from_bits(2)],
         joints: vec![Entity::from_bits(10), Entity::from_bits(11)],
         max_length: 150.0,

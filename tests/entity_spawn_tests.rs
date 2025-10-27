@@ -3,7 +3,7 @@ use bevy::ecs::relationship::Relationship;
 use avian2d::prelude::*;
 
 // Import the types we need for testing
-use balthazar::{Player, Pole, CordSegment, CordSystem};
+use balthazar::{Player, CordSegment};
 
 #[test]
 fn test_player_entity_properties() {

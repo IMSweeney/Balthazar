@@ -1,35 +1,15 @@
-use bevy::prelude::*;
-
+// Module declarations
+pub mod components;
 pub mod cord_system;
+pub mod player_movement;
+pub mod camera;
+pub mod setup;
+pub mod ui;
 
-#[derive(Component)]
-pub struct Player;
-
-#[derive(Component)]
-pub struct Pole;
-
-#[derive(Component)]
-pub struct CordSegment;
-
-#[derive(Component)]
-pub struct PoleAttachment {
-    pub pole_entity: Entity,
-}
-
-#[derive(Resource)]
-pub struct CordSystem {
-    pub segments: Vec<Entity>,
-    pub joints: Vec<Entity>,
-    pub max_length: f32,
-    pub min_length: f32,
-    pub current_length: f32,
-    pub segment_length: f32,
-    pub segment_size: f32,
-    pub player_entity: Entity,
-    pub is_retracting: bool,
-    pub attached_pole: Option<Entity>, // Now refers to the attachment point entity
-    pub attachment_range: f32,
-}
-
-// Re-export cord system functions for convenience
+// Re-export all public items for convenience
+pub use components::*;
 pub use cord_system::*;
+pub use player_movement::*;
+pub use camera::*;
+pub use setup::*;
+pub use ui::*;

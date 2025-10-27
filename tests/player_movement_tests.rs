@@ -10,14 +10,6 @@ struct TestSystemToggles {
     player_movement: bool,
 }
 
-// Test helper to create a player entity with velocity
-fn create_test_player(mut commands: Commands) -> Entity {
-    commands.spawn((
-        Player,
-        LinearVelocity(Vec2::ZERO),
-        Transform::from_xyz(0.0, 0.0, 0.0),
-    )).id()
-}
 
 #[test]
 fn test_player_movement_wasd_controls() {
