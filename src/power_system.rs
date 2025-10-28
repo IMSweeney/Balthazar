@@ -3,7 +3,7 @@ use crate::components::{Battery, Player, PowerSource, Pole, PoleAttachment, Cord
 use crate::day_night_cycle::DayNightCycle;
 
 pub fn transfer_power(
-    time: Res<Time>,
+    time: Res<Time<Virtual>>,
     cord_system: Res<CordSystem>,
     mut player_query: Query<&mut Battery, With<Player>>,
     pole_attachment_query: Query<&PoleAttachment>,
@@ -30,7 +30,7 @@ pub fn transfer_power(
 }
 
 pub fn solar_charge(
-    time: Res<Time>,
+    time: Res<Time<Virtual>>,
     cycle: Res<DayNightCycle>,
     mut query: Query<(&SolarPanel, &mut Battery), With<Player>>,
 ) {

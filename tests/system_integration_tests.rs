@@ -136,6 +136,7 @@ fn test_resource_management_integration() {
     let cord_system = CordSystem {
         segments: vec![Entity::from_bits(1), Entity::from_bits(2)],
         joints: vec![Entity::from_bits(10), Entity::from_bits(11)],
+        visual_meshes: vec![],
         max_length: 500.0,
         min_length: 50.0,
         current_length: 100.0,
@@ -241,6 +242,7 @@ fn test_state_consistency_across_systems() {
     let cord_system = CordSystem {
         segments: vec![Entity::from_bits(1), Entity::from_bits(2), Entity::from_bits(3)],
         joints: vec![Entity::from_bits(10), Entity::from_bits(11), Entity::from_bits(12)],
+        visual_meshes: vec![],
         max_length: 150.0,
         min_length: 50.0,
         current_length: 80.0,

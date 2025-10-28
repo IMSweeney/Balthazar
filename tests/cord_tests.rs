@@ -8,6 +8,7 @@ fn test_cord_retraction_logic() {
     let mut cord_system = CordSystem {
         segments: vec![Entity::from_bits(1), Entity::from_bits(2)],
         joints: vec![Entity::from_bits(10), Entity::from_bits(11)],
+        visual_meshes: vec![],
         max_length: 150.0,
         min_length: 50.0,
         current_length: 100.0,
@@ -40,6 +41,7 @@ fn test_cord_retraction_minimum_limit() {
     let mut cord_system = CordSystem {
         segments: vec![Entity::from_bits(1), Entity::from_bits(2)],
         joints: vec![Entity::from_bits(10), Entity::from_bits(11)],
+        visual_meshes: vec![],
         max_length: 150.0,
         min_length: 50.0,
         current_length: 50.0, // Already at minimum
@@ -72,6 +74,7 @@ fn test_cord_extension_when_player_pulls() {
     let mut cord_system = CordSystem {
         segments: vec![Entity::from_bits(1), Entity::from_bits(2)],
         joints: vec![Entity::from_bits(10), Entity::from_bits(11)],
+        visual_meshes: vec![],
         max_length: 150.0,
         min_length: 50.0,
         current_length: 80.0,
@@ -108,6 +111,7 @@ fn test_cord_extension_maximum_limit() {
     let mut cord_system = CordSystem {
         segments: vec![Entity::from_bits(1), Entity::from_bits(2)],
         joints: vec![Entity::from_bits(10), Entity::from_bits(11)],
+        visual_meshes: vec![],
         max_length: 150.0,
         min_length: 50.0,
         current_length: 149.0, // Near maximum
@@ -143,6 +147,7 @@ fn test_cord_no_extension_when_player_not_pulling() {
     let mut cord_system = CordSystem {
         segments: vec![Entity::from_bits(1), Entity::from_bits(2)],
         joints: vec![Entity::from_bits(10), Entity::from_bits(11)],
+        visual_meshes: vec![],
         max_length: 150.0,
         min_length: 50.0,
         current_length: 80.0,
@@ -183,6 +188,7 @@ fn test_extension_functionality_after_pole_attachment() {
     let mut cord_system = CordSystem {
         segments: vec![Entity::from_bits(1), Entity::from_bits(2)],
         joints: vec![Entity::from_bits(10), Entity::from_bits(11)],
+        visual_meshes: vec![],
         max_length: 150.0,
         min_length: 50.0,
         current_length: 80.0,
@@ -223,6 +229,7 @@ fn test_extension_fails_when_not_attached_to_any_pole() {
     let mut cord_system = CordSystem {
         segments: vec![Entity::from_bits(1), Entity::from_bits(2)],
         joints: vec![Entity::from_bits(10), Entity::from_bits(11)],
+        visual_meshes: vec![],
         max_length: 150.0,
         min_length: 50.0,
         current_length: 80.0,
@@ -258,6 +265,7 @@ fn test_pole_attachment_detachment() {
     let mut cord_system = CordSystem {
         segments: vec![Entity::from_bits(1), Entity::from_bits(2)],
         joints: vec![Entity::from_bits(10), Entity::from_bits(11)],
+        visual_meshes: vec![],
         max_length: 150.0,
         min_length: 50.0,
         current_length: 80.0,
@@ -324,6 +332,7 @@ fn test_segment_management_on_retraction() {
     let mut cord_system = CordSystem {
         segments: vec![Entity::from_bits(1), Entity::from_bits(2), Entity::from_bits(3), Entity::from_bits(4)],
         joints: vec![Entity::from_bits(10), Entity::from_bits(11), Entity::from_bits(12), Entity::from_bits(13)],
+        visual_meshes: vec![],
         max_length: 150.0,
         min_length: 50.0,
         current_length: 80.0, // Should have 4 segments (80/20)
@@ -359,6 +368,7 @@ fn test_segment_management_on_extension() {
     let mut cord_system = CordSystem {
         segments: vec![Entity::from_bits(1), Entity::from_bits(2)],
         joints: vec![Entity::from_bits(10), Entity::from_bits(11)],
+        visual_meshes: vec![],
         max_length: 150.0,
         min_length: 50.0,
         current_length: 40.0, // Should have 2 segments (40/20)
@@ -396,6 +406,7 @@ fn test_minimum_segments_maintained() {
     let cord_system = CordSystem {
         segments: vec![Entity::from_bits(1), Entity::from_bits(2)],
         joints: vec![Entity::from_bits(10), Entity::from_bits(11)],
+        visual_meshes: vec![],
         max_length: 150.0,
         min_length: 50.0,
         current_length: 30.0, // Would need 1.5 segments, but minimum is 2
@@ -437,6 +448,7 @@ fn test_continuous_extension_after_initial_extension() {
     let mut cord_system = CordSystem {
         segments: vec![Entity::from_bits(1), Entity::from_bits(2)],
         joints: vec![Entity::from_bits(10), Entity::from_bits(11)],
+        visual_meshes: vec![],
         max_length: 150.0,
         min_length: 50.0,
         current_length: 80.0,
