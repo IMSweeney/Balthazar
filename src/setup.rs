@@ -1,6 +1,6 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
-use crate::components::{Player, Pole, CordSegment, PoleAttachment, CordSystem, CordMaterial};
+use crate::components::{Battery, Player, Pole, PowerSource, CordSegment, PoleAttachment, CordSystem, CordMaterial};
 
 #[derive(PhysicsLayer, Default)]
 enum LayerNames {
@@ -99,6 +99,9 @@ pub fn setup(
             Collider::rectangle(15.0, 80.0), // Match the sprite size
             CollisionLayers::new([LayerNames::Pole], [LayerNames::Player, LayerNames::Cord]),
             Pole,
+            PowerSource {
+                max_output: 20.0, // 20 charge per second
+            },
         )).id();
         pole_entities.push(pole_entity);
         
@@ -172,6 +175,10 @@ pub fn setup(
         LinearDamping(1.5), // Higher damping for stability
         AngularDamping(2.0), // Higher angular damping
         Player,
+        Battery {
+            max_charge: 100.0,
+            current_charge: 100.0,
+        },
     )).id();
     
     // Add an eye to the player (positioned towards the "top" initially)

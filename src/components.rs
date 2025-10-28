@@ -4,7 +4,18 @@ use bevy::prelude::*;
 pub struct Player;
 
 #[derive(Component)]
+pub struct Battery {
+    pub max_charge: f32,
+    pub current_charge: f32,
+}
+
+#[derive(Component)]
 pub struct Pole;
+
+#[derive(Component)]
+pub struct PowerSource {
+    pub max_output: f32, // Power per second (infinite source for now)
+}
 
 #[derive(Component)]
 pub struct CordSegment;

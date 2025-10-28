@@ -1,6 +1,8 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
-
+fn handle_reset_button() {
+    // TODO: Implement reset button logic
+}
 // Use types and functions from lib.rs
 use balthazar::*;
 
@@ -30,6 +32,9 @@ fn main() {
             camera_zoom,
             rotate_player,
             update_ui,
+            update_battery_display,
+            transfer_power,
+            handle_reset_button,
         ))
         .run();
 }

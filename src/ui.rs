@@ -1,7 +1,36 @@
 use bevy::prelude::*;
-use crate::components::{ToggleButton, SystemToggles};
+use crate::components::*;
+
+#[derive(Component)]
+pub struct BatteryDisplay;
 
 pub fn setup_ui(mut commands: Commands) {
+    // Battery display (top-left corner)
+    commands.spawn((
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(10.0),
+            left: Val::Px(10.0),
+            width: Val::Px(150.0),
+            height: Val::Px(40.0),
+            padding: UiRect::all(Val::Px(10.0)),
+            flex_direction: FlexDirection::Column,
+            ..default()
+        },
+        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.8)),
+    ))
+    .with_children(|parent| {
+        parent.spawn((
+            Text::new("Battery: 100%"),
+            TextFont {
+                font_size: 16.0,
+                ..default()
+            },
+            TextColor(Color::srgb(0.2, 1.0, 0.2)),
+            BatteryDisplay,
+        ));
+    });
+
     // Create UI root node
     commands.spawn((
         Node {
@@ -84,6 +113,27 @@ pub fn setup_ui(mut commands: Commands) {
             });
         }
     });
+}
+
+pub fn update_battery_display(
+    player_query: Query<&Battery, With<Player>>,
+    mut text_query: Query<(&mut Text, &mut TextColor), With<BatteryDisplay>>,
+) {
+    if let Ok(battery) = player_query.single() {
+        if let Ok((mut text, mut color)) = text_query.single_mut() {
+            let percentage = (battery.current_charge / battery.max_charge * 100.0).round();
+            **text = format!("Battery: {:.0}%", percentage);
+            
+            // Change color based on charge level
+            if percentage > 50.0 {
+                *color = TextColor(Color::srgb(0.2, 1.0, 0.2)); // Green
+            } else if percentage > 20.0 {
+                *color = TextColor(Color::srgb(1.0, 1.0, 0.2)); // Yellow
+            } else {
+                *color = TextColor(Color::srgb(1.0, 0.2, 0.2)); // Red
+            }
+        }
+    }
 }
 
 pub fn update_ui(
