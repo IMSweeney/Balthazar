@@ -2,6 +2,7 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::components::{Player, CordSegment, CordSystem, PoleAttachment, SystemToggles, CordMaterial};
+use crate::setup::Z_GAME_LAYER;
 
 // Catmull-Rom spline interpolation between four control points
 fn catmull_rom_spline(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: f32) -> Vec2 {
@@ -112,9 +113,8 @@ pub fn render_cord_meshes(
             let mesh_entity = commands.spawn((
                 Mesh2d(meshes.add(Rectangle::new(length, cord_width))),
                 MeshMaterial2d(cord_material.material.clone()), // Use textured material
-                Transform::from_translation(midpoint.extend(0.0)) // Same Z as game objects
+                Transform::from_translation(midpoint.extend(Z_GAME_LAYER)) // Same Z as game objects
                     .with_rotation(Quat::from_rotation_z(angle)),
-                GlobalZIndex(-1), // Render behind other entities
                 CordMeshSegment,
             )).id();
             

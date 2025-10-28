@@ -23,7 +23,7 @@ fn main() {
             player_rotation: true,
         })
         .insert_resource(DayNightCycle::default()) // Initialize day/night cycle
-        .add_systems(Startup, (setup, setup_ui))
+        .add_systems(Startup, (setup, setup_ui, spawn_background))
         .add_systems(Update, (
             move_player,
             cord_retraction_wrapper,

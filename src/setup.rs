@@ -2,6 +2,14 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 use crate::components::{Battery, Player, Pole, PowerSource, CordSegment, PoleAttachment, CordSystem, CordMaterial, SolarPanel};
 
+// Z-layer constants for rendering depth
+pub const Z_BACKGROUND_GROUND: f32 = 0.0;
+pub const Z_BACKGROUND_ROCKS: f32 = 10.0;
+pub const Z_BACKGROUND_GRASS: f32 = 20.0;
+pub const Z_GAME_LAYER: f32 = 100.0;
+pub const Z_GAME_LAYER_DETAIL: f32 = 101.0;  // For elements like eyes, backpacks
+pub const Z_GAME_LAYER_DETAIL_2: f32 = 102.0; // For elements that need to be above other details
+
 #[derive(PhysicsLayer, Default)]
 enum LayerNames {
     #[default]
@@ -66,6 +74,8 @@ pub fn setup(
         Camera2d,
         Projection::Orthographic(OrthographicProjection {
             scale: 0.5, // Zoom out to see more of the scene
+            near: -1000.0,
+            far: 1000.0,
             ..OrthographicProjection::default_2d()
         }),
         Transform::from_xyz(0.0, 0.0, 1000.0),
@@ -73,11 +83,11 @@ pub fn setup(
 
     // Spawn multiple poles for testing
     let pole_positions = vec![
-        Vec3::new(0., 0., 0.), // Center pole
-        Vec3::new(300., 200., 0.),
-        Vec3::new(-300., 150., 0.),
-        Vec3::new(200., -250., 0.),
-        Vec3::new(-150., -200., 0.),
+        Vec3::new(0., 0., Z_GAME_LAYER), // Center pole
+        Vec3::new(300., 200., Z_GAME_LAYER),
+        Vec3::new(-300., 150., Z_GAME_LAYER),
+        Vec3::new(200., -250., Z_GAME_LAYER),
+        Vec3::new(-150., -200., Z_GAME_LAYER),
     ];
     
     let mut pole_entities = Vec::new();
@@ -126,7 +136,7 @@ pub fn setup(
                 custom_size: Some(Vec2::new(60.0, 8.0)), // Wide horizontal crossbar
                 ..default()
             },
-            Transform::from_translation(Vec3::new(pos.x, pos.y + 30.0, pos.z)), // Position above pole
+            Transform::from_translation(Vec3::new(pos.x, pos.y + 30.0, Z_GAME_LAYER)), // Position above pole
         ));
     }
     
@@ -152,7 +162,7 @@ pub fn setup(
                 custom_size: Some(Vec2::new(segment_size, segment_size)),
                 ..default()
             },
-            Transform::from_translation(Vec3::new(x, 0., 0.)), // At ground level
+            Transform::from_translation(Vec3::new(x, 0., Z_GAME_LAYER)), // At ground level
             RigidBody::Dynamic,
             Collider::circle(segment_size / 2.0),
             CollisionLayers::new([LayerNames::Cord], [LayerNames::Pole]), // Only collide with poles
@@ -168,7 +178,7 @@ pub fn setup(
     let player_entity = commands.spawn((
         Mesh2d(meshes.add(Circle::new(20.0))), // True circular mesh with 20px radius
         MeshMaterial2d(materials.add(ColorMaterial::from(Color::srgb(0.2, 0.4, 0.8)))), // Blue material
-        Transform::from_translation(Vec3::new(max_cord_length, 0., 0.)), // Player at same level
+        Transform::from_translation(Vec3::new(max_cord_length, 0., Z_GAME_LAYER)), // Player at same level
         RigidBody::Dynamic,
         Collider::circle(20.0), // Circular collider to match the circular mesh
         CollisionLayers::new([LayerNames::Player], [LayerNames::Pole]), // Only collide with poles, not cord
@@ -191,7 +201,7 @@ pub fn setup(
             custom_size: Some(Vec2::new(8.0, 8.0)),
             ..default()
         },
-        Transform::from_translation(Vec3::new(0.0, 12.0, 0.01)), // Relative position: 12 pixels above center
+        Transform::from_translation(Vec3::new(0.0, 12.0, Z_GAME_LAYER_DETAIL)), // Relative position: 12 pixels above center
         ChildOf(player_entity), // Make the eye a child of the player so it rotates with it
     ));
     
@@ -202,7 +212,7 @@ pub fn setup(
             custom_size: Some(Vec2::new(4.0, 4.0)),
             ..default()
         },
-        Transform::from_translation(Vec3::new(0.0, 12.0, 0.02)), // Same relative position as eye, but higher Z
+        Transform::from_translation(Vec3::new(0.0, 12.0, Z_GAME_LAYER_DETAIL_2)), // Same relative position as eye, but higher Z
         ChildOf(player_entity),
     ));
     
@@ -213,7 +223,7 @@ pub fn setup(
             custom_size: Some(Vec2::new(8.0, 6.0)), // Small rectangular box
             ..default()
         },
-        Transform::from_translation(Vec3::new(0.0, -12.0, 0.01)), // Relative position: 12 pixels behind center
+        Transform::from_translation(Vec3::new(0.0, -12.0, Z_GAME_LAYER_DETAIL)), // Relative position: 12 pixels behind center
         ChildOf(player_entity), // Make it a child of the player so it rotates with them
     ));
 

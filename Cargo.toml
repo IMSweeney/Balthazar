@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 bevy = "0.17"
 avian2d = "0.4"
+rand = "0.8"
 
 # Optimize for faster dev builds
 [profile.dev]
