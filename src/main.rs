@@ -22,6 +22,7 @@ fn main() {
             camera_zoom: true,
             player_rotation: true,
         })
+        .insert_resource(DayNightCycle::default()) // Initialize day/night cycle
         .add_systems(Startup, (setup, setup_ui))
         .add_systems(Update, (
             move_player,
@@ -34,7 +35,11 @@ fn main() {
             update_ui,
             update_battery_display,
             transfer_power,
+            solar_charge,
             handle_reset_button,
+            update_day_night_cycle,
+            apply_day_night_lighting,
+            update_sky_color,
         ))
         .run();
 }

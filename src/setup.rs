@@ -1,6 +1,6 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
-use crate::components::{Battery, Player, Pole, PowerSource, CordSegment, PoleAttachment, CordSystem, CordMaterial};
+use crate::components::{Battery, Player, Pole, PowerSource, CordSegment, PoleAttachment, CordSystem, CordMaterial, SolarPanel};
 
 #[derive(PhysicsLayer, Default)]
 enum LayerNames {
@@ -178,6 +178,9 @@ pub fn setup(
         Battery {
             max_charge: 100.0,
             current_charge: 100.0,
+        },
+        SolarPanel {
+            max_output: 5.0, // 5 charge per second at full brightness (slower than pole charging)
         },
     )).id();
     

@@ -18,6 +18,11 @@ pub struct PowerSource {
 }
 
 #[derive(Component)]
+pub struct SolarPanel {
+    pub max_output: f32, // Maximum power per second at full brightness
+}
+
+#[derive(Component)]
 pub struct CordSegment;
 
 #[derive(Component)]

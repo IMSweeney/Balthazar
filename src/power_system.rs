@@ -1,5 +1,6 @@
 use bevy::prelude::*;
-use crate::components::{Battery, Player, PowerSource, Pole, PoleAttachment, CordSystem};
+use crate::components::{Battery, Player, PowerSource, Pole, PoleAttachment, CordSystem, SolarPanel};
+use crate::day_night_cycle::DayNightCycle;
 
 pub fn transfer_power(
     time: Res<Time>,
@@ -24,6 +25,22 @@ pub fn transfer_power(
                     }
                 }
             }
+        }
+    }
+}
+
+pub fn solar_charge(
+    time: Res<Time>,
+    cycle: Res<DayNightCycle>,
+    mut query: Query<(&SolarPanel, &mut Battery), With<Player>>,
+) {
+    // Charge amount scales with brightness (0.2 at night, 1.0 at noon)
+    let brightness = cycle.get_brightness();
+    
+    for (solar_panel, mut battery) in query.iter_mut() {
+        if battery.current_charge < battery.max_charge {
+            let charge_amount = solar_panel.max_output * brightness * time.delta_secs();
+            battery.current_charge = (battery.current_charge + charge_amount).min(battery.max_charge);
         }
     }
 }
