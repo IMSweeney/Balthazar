@@ -3,6 +3,53 @@ use bevy::prelude::*;
 
 use crate::components::{Player, CordSegment, CordSystem, PoleAttachment, SystemToggles, CordMaterial};
 
+// Catmull-Rom spline interpolation between four control points
+fn catmull_rom_spline(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: f32) -> Vec2 {
+    let t2 = t * t;
+    let t3 = t2 * t;
+    
+    0.5 * (
+        (2.0 * p1) +
+        (-p0 + p2) * t +
+        (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2 +
+        (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3
+    )
+}
+
+// Generate smooth spline points from control points
+fn generate_spline_points(control_points: &[Vec2], samples_per_segment: usize) -> Vec<Vec2> {
+    if control_points.len() < 2 {
+        return Vec::new();
+    }
+    
+    if control_points.len() == 2 {
+        return control_points.to_vec();
+    }
+    
+    let mut spline_points = Vec::new();
+    
+    // For each segment between control points
+    for i in 0..control_points.len() - 1 {
+        // Get the four control points needed for Catmull-Rom
+        let p0 = if i == 0 { control_points[i] } else { control_points[i - 1] };
+        let p1 = control_points[i];
+        let p2 = control_points[i + 1];
+        let p3 = if i + 2 < control_points.len() { control_points[i + 2] } else { control_points[i + 1] };
+        
+        // Sample points along this segment
+        for j in 0..samples_per_segment {
+            let t = j as f32 / samples_per_segment as f32;
+            let point = catmull_rom_spline(p0, p1, p2, p3, t);
+            spline_points.push(point);
+        }
+    }
+    
+    // Add the final point
+    spline_points.push(*control_points.last().unwrap());
+    
+    spline_points
+}
+
 // Render cord as textured meshes connecting segments
 pub fn render_cord_meshes(
     mut commands: Commands,
@@ -15,26 +62,26 @@ pub fn render_cord_meshes(
     mesh_query: Query<Entity, With<CordMeshSegment>>,
 ) {
     // Collect all positions along the cord
-    let mut positions = Vec::new();
+    let mut control_points = Vec::new();
     
     // Start from attachment point if attached
     if let Some(attached_pole) = cord_system.attached_pole {
         if let Ok(attachment_transform) = attachment_query.get(attached_pole) {
-            positions.push(attachment_transform.translation.truncate());
+            control_points.push(attachment_transform.translation.truncate());
         }
     }
     
     // Add all segment positions
     for &segment_entity in &cord_system.segments {
         if let Ok(transform) = segment_query.get(segment_entity) {
-            positions.push(transform.translation.truncate());
+            control_points.push(transform.translation.truncate());
         }
     }
     
     // Add player backpack position
     if let Ok(player_transform) = player_query.single() {
         let backpack_pos = player_transform.translation.truncate() + Vec2::new(0.0, -12.0);
-        positions.push(backpack_pos);
+        control_points.push(backpack_pos);
     }
     
     // Remove old mesh entities
@@ -44,12 +91,16 @@ pub fn render_cord_meshes(
         }
     }
     
-    // Create mesh segments between consecutive points
+    // Generate smooth spline points
+    let samples_per_segment = 8; // Number of points to sample between each control point
+    let spline_points = generate_spline_points(&control_points, samples_per_segment);
+    
+    // Create mesh segments between consecutive spline points
     let cord_width = 8.0; // Width of the cord visual
-    if positions.len() >= 2 {
-        for i in 0..positions.len() - 1 {
-            let start = positions[i];
-            let end = positions[i + 1];
+    if spline_points.len() >= 2 {
+        for i in 0..spline_points.len() - 1 {
+            let start = spline_points[i];
+            let end = spline_points[i + 1];
             
             // Calculate the midpoint, length, and rotation for the segment
             let midpoint = (start + end) / 2.0;
