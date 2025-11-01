@@ -7,6 +7,11 @@ edition = "2021"
 bevy = "0.17"
 avian2d = "0.4"
 rand = "0.8"
+bevy_ecs_tiled = { version = "0.9", features = ["debug", "avian"] }
+
+
+[patch.crates-io]
+bevy_ecs_tiled = { git = "https://github.com/adrien-bon/bevy_ecs_tiled.git", branch = "dev" }
 
 # Optimize for faster dev builds
 [profile.dev]

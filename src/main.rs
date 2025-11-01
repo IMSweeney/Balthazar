@@ -1,5 +1,6 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
+use bevy_ecs_tiled::prelude::*;
 fn handle_reset_button() {
     // TODO: Implement reset button logic
 }
@@ -11,9 +12,12 @@ fn main() {
         .add_plugins((
             DefaultPlugins,
             PhysicsPlugins::default(),
+            TiledPlugin::default(),
             // PhysicsDebugPlugin::default(), // Enables debug rendering
 
         ))
+        .add_plugins(TiledDebugPluginGroup)
+        .add_plugins(TiledPhysicsPlugin::<TiledPhysicsAvianBackend>::default())
         .insert_resource(Gravity(Vec2::ZERO)) // No gravity for top-down view
         .insert_resource(SystemToggles {
             player_movement: true,
@@ -23,7 +27,7 @@ fn main() {
             player_rotation: true,
         })
         .insert_resource(DayNightCycle::default()) // Initialize day/night cycle
-        .add_systems(Startup, (setup, setup_ui, spawn_background))
+        .add_systems(Startup, (setup, setup_ui, load_tiled_map))
         .add_systems(Update, (
             move_player,
             cord_retraction_wrapper,

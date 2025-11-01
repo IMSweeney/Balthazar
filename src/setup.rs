@@ -70,16 +70,7 @@ pub fn setup(
     });
     
     // Spawn 2D camera with orthographic projection for isometric view
-    commands.spawn((
-        Camera2d,
-        Projection::Orthographic(OrthographicProjection {
-            scale: 0.5, // Zoom out to see more of the scene
-            near: -1000.0,
-            far: 1000.0,
-            ..OrthographicProjection::default_2d()
-        }),
-        Transform::from_xyz(0.0, 0.0, 1000.0),
-    ));
+    commands.spawn(Camera2d);
 
     // Spawn multiple poles for testing
     let pole_positions = vec![

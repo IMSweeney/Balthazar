@@ -7,7 +7,7 @@ pub mod setup;
 pub mod ui;
 pub mod power_system;
 pub mod day_night_cycle;
-pub mod background;
+pub mod tiled_map;
 
 // Re-export all public items for convenience
 pub use components::*;
@@ -18,4 +18,4 @@ pub use setup::*;
 pub use ui::*;
 pub use power_system::*;
 pub use day_night_cycle::*;
-pub use background::*;
+pub use tiled_map::*;
