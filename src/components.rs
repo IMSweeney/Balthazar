@@ -3,21 +3,25 @@ use bevy::prelude::*;
 #[derive(Component)]
 pub struct Player;
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 pub struct Battery {
     pub max_charge: f32,
     pub current_charge: f32,
 }
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 pub struct Pole;
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 pub struct PowerSource {
     pub max_output: f32, // Power per second (infinite source for now)
 }
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 pub struct SolarPanel {
     pub max_output: f32, // Maximum power per second at full brightness
 }
@@ -26,12 +30,12 @@ pub struct SolarPanel {
 pub struct CordSegment;
 
 #[derive(Component)]
-pub struct PoleAttachment {
-    pub pole_entity: Entity,
-}
+pub struct CordAttachment;
 
 #[derive(Component)]
-pub struct CordAttachment;
+pub struct AttachmentPoint {
+    pub parent_pole: Entity,
+}
 
 #[derive(Component)]
 pub struct ToggleButton(pub String);

@@ -1,22 +1,20 @@
 use bevy::prelude::*;
-use crate::components::{Battery, Player, PowerSource, Pole, PoleAttachment, CordSystem, SolarPanel};
+use crate::components::{Battery, Player, PowerSource, Pole, CordSystem, SolarPanel, AttachmentPoint};
 use crate::day_night_cycle::DayNightCycle;
 
 pub fn transfer_power(
     time: Res<Time<Virtual>>,
     cord_system: Res<CordSystem>,
     mut player_query: Query<&mut Battery, With<Player>>,
-    pole_attachment_query: Query<&PoleAttachment>,
     pole_query: Query<&PowerSource, With<Pole>>,
+    attachment_query: Query<&AttachmentPoint>,
 ) {
-    // Only transfer power if player is attached to a pole
-    if let Some(attached_pole_attachment) = cord_system.attached_pole {
-        // Get the pole entity from the attachment point
-        if let Ok(pole_attachment) = pole_attachment_query.get(attached_pole_attachment) {
-            let pole_entity = pole_attachment.pole_entity;
-            
+    // Only transfer power if player is attached to an attachment point
+    if let Some(attached_attachment) = cord_system.attached_pole {
+        // Get the parent pole from the attachment point
+        if let Ok(attachment_point) = attachment_query.get(attached_attachment) {
             // Check if the pole has a power source
-            if let Ok(power_source) = pole_query.get(pole_entity) {
+            if let Ok(power_source) = pole_query.get(attachment_point.parent_pole) {
                 // Transfer power to player
                 if let Ok(mut battery) = player_query.single_mut() {
                     if battery.current_charge < battery.max_charge {

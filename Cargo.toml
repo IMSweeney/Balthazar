@@ -7,7 +7,7 @@ edition = "2021"
 bevy = "0.17"
 avian2d = "0.4"
 rand = "0.8"
-bevy_ecs_tiled = { version = "0.9", features = ["debug", "avian"] }
+bevy_ecs_tiled = { version = "0.9", features = ["debug", "avian", "user_properties"] }
 
 
 [patch.crates-io]

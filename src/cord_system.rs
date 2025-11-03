@@ -1,7 +1,7 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use crate::components::{Player, CordSegment, CordSystem, PoleAttachment, SystemToggles, CordMaterial};
+use crate::components::{Player, CordSegment, CordSystem, Pole, SystemToggles, CordMaterial, AttachmentPoint};
 use crate::setup::Z_GAME_LAYER;
 
 // Catmull-Rom spline interpolation between four control points
@@ -59,7 +59,7 @@ pub fn render_cord_meshes(
     cord_material: Res<CordMaterial>,
     segment_query: Query<&Transform, With<CordSegment>>,
     player_query: Query<&Transform, With<Player>>,
-    attachment_query: Query<&Transform, With<PoleAttachment>>,
+    attachment_query: Query<&Transform, With<AttachmentPoint>>,
     mesh_query: Query<Entity, With<CordMeshSegment>>,
 ) {
     // Collect all positions along the cord
@@ -133,7 +133,7 @@ pub fn handle_cord_retraction(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut cord_system: ResMut<CordSystem>,
     player_query: Query<&Transform, (With<Player>, Without<CordSegment>)>,
-    attachment_query: Query<&Transform, With<PoleAttachment>>,
+    attachment_query: Query<&Transform, With<AttachmentPoint>>,
     segment_query: Query<&Transform, With<CordSegment>>,
     time: Res<Time>,
 ) {
@@ -160,7 +160,8 @@ pub fn handle_cord_retraction(
         if let (Ok(player_transform), Some(attached_point)) = (player_query.single(), cord_system.attached_pole) {
             // Find the attached attachment point's position (already at pole base)
             if let Ok(attachment_transform) = attachment_query.get(attached_point) {
-                let distance = player_transform.translation.distance(attachment_transform.translation);
+                // Use 2D distance (XY plane) since attachment point is at same z-layer as player
+                let distance = player_transform.translation.truncate().distance(attachment_transform.translation.truncate());
                 
                 // If player is pulling at current cord length, extend the cord
                 if distance >= cord_system.current_length * 0.95 && cord_system.current_length < cord_system.max_length {
@@ -275,7 +276,8 @@ pub fn handle_cord_attachment(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut cord_system: ResMut<CordSystem>,
     player_query: Query<&Transform, With<Player>>,
-    attachment_query: Query<(Entity, &Transform), With<PoleAttachment>>,
+    pole_query: Query<(Entity, &Transform), With<Pole>>,
+    attachment_query: Query<(Entity, &AttachmentPoint)>,
 ) {
     // Check for spacebar press
     if keyboard_input.just_pressed(KeyCode::Space) {
@@ -287,13 +289,42 @@ pub fn handle_cord_attachment(
                     println!("Cord disconnected from pole!");
                 },
                 None => {
-                    // Cord is not attached, try to attach to closest attachment point
-                    if let Some((closest_attachment, _)) = find_closest_attachment_point(
+                    // Cord is not attached, try to attach to closest pole
+                    if let Some((closest_pole, pole_transform)) = find_closest_pole(
                         player_transform.translation,
-                        &attachment_query,
+                        &pole_query,
                         cord_system.attachment_range
                     ) {
-                        attach_cord_to_pole(&mut commands, &mut cord_system, closest_attachment);
+                        // Check if an attachment point already exists for this pole
+                        let existing_attachment = attachment_query
+                            .iter()
+                            .find(|(_, ap)| ap.parent_pole == closest_pole)
+                            .map(|(entity, _)| entity);
+                        
+                        let attachment_entity = if let Some(existing) = existing_attachment {
+                            existing
+                        } else {
+                            // Create new attachment point at pole XY but player Z layer
+                            commands.spawn((
+                                Sprite {
+                                    color: Color::NONE, // Invisible
+                                    custom_size: Some(Vec2::new(1.0, 1.0)),
+                                    ..default()
+                                },
+                                Transform::from_translation(Vec3::new(
+                                    pole_transform.translation.x,
+                                    pole_transform.translation.y,
+                                    Z_GAME_LAYER, // Same z-layer as player
+                                )),
+                                RigidBody::Static,
+                                Collider::circle(0.5),
+                                AttachmentPoint {
+                                    parent_pole: closest_pole,
+                                },
+                            )).id()
+                        };
+                        
+                        attach_cord_to_pole(&mut commands, &mut cord_system, attachment_entity);
                         println!("Cord attached to pole!");
                     } else {
                         println!("No poles within attachment range!");
@@ -304,24 +335,24 @@ pub fn handle_cord_attachment(
     }
 }
 
-pub fn find_closest_attachment_point(
+pub fn find_closest_pole(
     player_pos: Vec3,
-    attachment_query: &Query<(Entity, &Transform), With<PoleAttachment>>,
+    pole_query: &Query<(Entity, &Transform), With<Pole>>,
     max_range: f32,
-) -> Option<(Entity, f32)> {
-    let mut closest_attachment = None;
+) -> Option<(Entity, Transform)> {
+    let mut closest_pole = None;
     let mut closest_distance = f32::MAX;
     
-    for (entity, transform) in attachment_query.iter() {
-        // Attachment points are already positioned at pole bases, so use position directly
-        let distance = player_pos.distance(transform.translation);
+    for (entity, transform) in pole_query.iter() {
+        // Use 2D distance (XY plane only)
+        let distance = player_pos.truncate().distance(transform.translation.truncate());
         if distance <= max_range && distance < closest_distance {
             closest_distance = distance;
-            closest_attachment = Some((entity, distance));
+            closest_pole = Some((entity, *transform));
         }
     }
     
-    closest_attachment
+    closest_pole
 }
 
 pub fn disconnect_cord_from_pole(
@@ -364,7 +395,7 @@ pub fn cord_retraction_wrapper(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     cord_system: ResMut<CordSystem>,
     player_query: Query<&Transform, (With<Player>, Without<CordSegment>)>,
-    attachment_query: Query<&Transform, With<PoleAttachment>>,
+    attachment_query: Query<&Transform, With<AttachmentPoint>>,
     segment_query: Query<&Transform, With<CordSegment>>,
     time: Res<Time>,
     toggles: Res<SystemToggles>,
@@ -378,9 +409,10 @@ pub fn cord_attachment_wrapper(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     cord_system: ResMut<CordSystem>,
     player_query: Query<&Transform, With<Player>>,
-    attachment_query: Query<(Entity, &Transform), With<PoleAttachment>>,
+    pole_query: Query<(Entity, &Transform), With<Pole>>,
+    attachment_query: Query<(Entity, &AttachmentPoint)>,
     toggles: Res<SystemToggles>,
 ) {
     if !toggles.cord_systems { return; }
-    handle_cord_attachment(commands, keyboard_input, cord_system, player_query, attachment_query);
+    handle_cord_attachment(commands, keyboard_input, cord_system, player_query, pole_query, attachment_query);
 }
