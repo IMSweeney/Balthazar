@@ -1,6 +1,7 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 use bevy_ecs_tiled::prelude::*;
+use bevy_light_2d::prelude::*;
 fn handle_reset_button() {
     // TODO: Implement reset button logic
 }
@@ -13,6 +14,7 @@ fn main() {
             DefaultPlugins,
             PhysicsPlugins::default(),
             TiledPlugin::default(),
+            Light2dPlugin,
             // PhysicsDebugPlugin::default(), // Enables debug rendering
 
         ))
@@ -35,7 +37,7 @@ fn main() {
             render_cord_meshes,
             camera_follow_player,
             camera_zoom,
-            rotate_player,
+            update_player_sprite_direction,
             update_ui,
             update_battery_display,
             transfer_power,

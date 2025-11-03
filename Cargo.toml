@@ -8,6 +8,7 @@ bevy = "0.17"
 avian2d = "0.4"
 rand = "0.8"
 bevy_ecs_tiled = { version = "0.9", features = ["debug", "avian", "user_properties"] }
+bevy_light_2d = "0.8"
 
 
 [patch.crates-io]

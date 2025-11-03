@@ -3,6 +3,19 @@ use bevy::prelude::*;
 #[derive(Component)]
 pub struct Player;
 
+#[derive(Component)]
+pub struct PlayerSprite {
+    pub current_direction: PlayerDirection,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum PlayerDirection {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
 #[derive(Component, Reflect)]
 #[reflect(Component)]
 pub struct Battery {
