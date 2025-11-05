@@ -16,6 +16,18 @@ pub enum PlayerDirection {
     Right,
 }
 
+#[derive(Component)]
+pub struct GridMovement {
+    pub target_position: Option<Vec2>,
+    pub move_speed: f32,
+    pub is_moving: bool,
+}
+
+#[derive(Resource)]
+pub struct IsometricGrid {
+    pub tile_size: f32, // Size of each grid tile
+}
+
 #[derive(Component, Reflect)]
 #[reflect(Component)]
 pub struct Battery {
@@ -55,18 +67,12 @@ pub struct ToggleButton(pub String);
 
 #[derive(Resource)]
 pub struct CordSystem {
-    pub segments: Vec<Entity>,
-    pub joints: Vec<Entity>,
-    pub visual_meshes: Vec<Entity>, // Visual mesh entities for rendering cord segments
-    pub max_length: f32,
-    pub min_length: f32,
-    pub current_length: f32,
-    pub segment_length: f32,
-    pub segment_size: f32,
+    pub visual_meshes: Vec<Entity>, // Visual mesh entities for rendering cord
     pub player_entity: Entity,
-    pub is_retracting: bool,
     pub attached_pole: Option<Entity>,
     pub attachment_range: f32,
+    pub trail_path: Vec<Vec2>, // Path of cord trail laid on ground
+    pub min_trail_segment_distance: f32, // Minimum distance before adding new trail point
 }
 
 #[derive(Resource)]

@@ -1,108 +1,129 @@
-use avian2d::prelude::*;
 use bevy::prelude::*;
-use crate::components::{Battery, Player, SystemToggles, PlayerSprite, PlayerDirection};
+use crate::components::{Battery, Player, SystemToggles, PlayerSprite, PlayerDirection, GridMovement, IsometricGrid};
 
 pub fn move_player(
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
-    mut player_query: Query<(&mut LinearVelocity, &mut Battery), With<Player>>,
+    keys: Res<ButtonInput<KeyCode>>,
+    grid: Res<IsometricGrid>,
+    mut player_query: Query<(&Transform, &mut GridMovement, &mut Battery), With<Player>>,
     toggles: Res<SystemToggles>,
 ) {
     if !toggles.player_movement { return; }
-    if let Ok((mut velocity, mut battery)) = player_query.single_mut() {
-        let mut force = Vec2::ZERO;
-        let move_speed = 300.0;
-        let mut is_moving = false;
+    
+    for (transform, mut grid_movement, mut battery) in player_query.iter_mut() {
+        // Check if we're currently moving to a target
+        if grid_movement.is_moving {
+            continue; // Let the grid_movement_system handle it
+        }
+        
+        // Check for new movement input (only one key press at a time for grid movement)
+        // Isometric movement: keys move along diagonal axes
+        // W: up-right (NE), S: down-left (SW), A: up-left (NW), D: down-right (SE)
+        let mut target_offset = None;
+        
+        if keys.just_pressed(KeyCode::KeyW) {
+            // Move up-right in isometric space (NE)
+            target_offset = Some(Vec2::new(grid.tile_size / 2.0, grid.tile_size / 4.0));
+        } else if keys.just_pressed(KeyCode::KeyS) {
+            // Move down-left in isometric space (SW)
+            target_offset = Some(Vec2::new(-grid.tile_size / 2.0, -grid.tile_size / 4.0));
+        } else if keys.just_pressed(KeyCode::KeyA) {
+            // Move up-left in isometric space (NW)
+            target_offset = Some(Vec2::new(-grid.tile_size / 2.0, grid.tile_size / 4.0));
+        } else if keys.just_pressed(KeyCode::KeyD) {
+            // Move down-right in isometric space (SE)
+            target_offset = Some(Vec2::new(grid.tile_size / 2.0, -grid.tile_size / 4.0));
+        }
+        
+        // Start moving to target if input detected and battery has charge
+        if let Some(offset) = target_offset {
+            if battery.current_charge > 0.0 {
+                let current_pos = transform.translation.truncate();
+                grid_movement.target_position = Some(current_pos + offset);
+                grid_movement.is_moving = true;
+                
+                // Drain some battery for initiating movement
+                let drain_per_move = 2.0;
+                battery.current_charge = (battery.current_charge - drain_per_move).max(0.0);
+            }
+        }
+    }
+}
 
-        // Map keys to isometric movement
-        // A/D moves along X axis
-        // W/S moves along Z axis (depth)
-        if keyboard_input.pressed(KeyCode::KeyA) {
-            force.x -= move_speed;
-            is_moving = true;
-        }
-        if keyboard_input.pressed(KeyCode::KeyD) {
-            force.x += move_speed;
-            is_moving = true;
-        }
-        if keyboard_input.pressed(KeyCode::KeyW) {
-            // Move "forward" in isometric view (negative Z)
-            // Since we're using 2D physics, we map this to Y
-            force.y += move_speed;
-            is_moving = true;
-        }
-        if keyboard_input.pressed(KeyCode::KeyS) {
-            // Move "backward" in isometric view (positive Z)
-            force.y -= move_speed;
-            is_moving = true;
-        }
-
-        // Drain battery when moving
-        if is_moving && battery.current_charge > 0.0 {
-            let drain_rate = 10.0; // Charge per second
-            battery.current_charge = (battery.current_charge - drain_rate * time.delta_secs()).max(0.0);
-        }
-
-        // Only allow movement if battery has charge
-        if battery.current_charge > 0.0 {
-            velocity.0 = force;
-        } else {
-            velocity.0 = Vec2::ZERO;
+pub fn grid_movement_system(
+    time: Res<Time>,
+    mut player_query: Query<(&mut Transform, &mut GridMovement), With<Player>>,
+    toggles: Res<SystemToggles>,
+) {
+    if !toggles.player_movement { return; }
+    
+    for (mut transform, mut grid_movement) in player_query.iter_mut() {
+        if let Some(target) = grid_movement.target_position {
+            let current_pos = transform.translation.truncate();
+            let direction = target - current_pos;
+            let distance = direction.length();
+            
+            // Check if we've reached the target
+            if distance < 2.0 {
+                // Snap to exact position
+                transform.translation.x = target.x;
+                transform.translation.y = target.y;
+                grid_movement.target_position = None;
+                grid_movement.is_moving = false;
+            } else {
+                // Move towards target using direct transform manipulation
+                let direction_normalized = direction.normalize();
+                let move_delta = direction_normalized * grid_movement.move_speed * time.delta_secs();
+                
+                // Make sure we don't overshoot
+                if move_delta.length() >= distance {
+                    transform.translation.x = target.x;
+                    transform.translation.y = target.y;
+                    grid_movement.target_position = None;
+                    grid_movement.is_moving = false;
+                } else {
+                    transform.translation.x += move_delta.x;
+                    transform.translation.y += move_delta.y;
+                }
+            }
+        } else if grid_movement.is_moving {
+            grid_movement.is_moving = false;
         }
     }
 }
 
 pub fn update_player_sprite_direction(
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut player_query: Query<(&mut PlayerSprite, &mut Sprite), With<Player>>,
+    mut player_query: Query<(&mut PlayerSprite, &mut Sprite, &GridMovement), With<Player>>,
     toggles: Res<SystemToggles>,
 ) {
     if !toggles.player_rotation { return; }
     
-    for (mut player_sprite, mut sprite) in player_query.iter_mut() {
-        // Calculate input direction
-        let mut input_direction = Vec2::ZERO;
-        if keyboard_input.pressed(KeyCode::KeyA) {
-            input_direction.x -= 1.0;
-        }
-        if keyboard_input.pressed(KeyCode::KeyD) {
-            input_direction.x += 1.0;
-        }
-        if keyboard_input.pressed(KeyCode::KeyW) {
-            input_direction.y += 1.0;
-        }
-        if keyboard_input.pressed(KeyCode::KeyS) {
-            input_direction.y -= 1.0;
+    for (mut player_sprite, mut sprite, _grid_movement) in player_query.iter_mut() {
+        // Check for key just pressed to update direction immediately
+        let mut new_direction = None;
+        
+        if keyboard_input.just_pressed(KeyCode::KeyW) {
+            new_direction = Some(PlayerDirection::Up);
+        } else if keyboard_input.just_pressed(KeyCode::KeyS) {
+            new_direction = Some(PlayerDirection::Down);
+        } else if keyboard_input.just_pressed(KeyCode::KeyA) {
+            new_direction = Some(PlayerDirection::Left);
+        } else if keyboard_input.just_pressed(KeyCode::KeyD) {
+            new_direction = Some(PlayerDirection::Right);
         }
         
-        // Only update direction if there's input
-        if input_direction.length() > 0.1 {
-            // Determine primary direction
-            let new_direction = if input_direction.x.abs() > input_direction.y.abs() {
-                if input_direction.x > 0.0 {
-                    PlayerDirection::Right
-                } else {
-                    PlayerDirection::Left
-                }
-            } else {
-                if input_direction.y > 0.0 {
-                    PlayerDirection::Up
-                } else {
-                    PlayerDirection::Down
-                }
-            };
-            
-            // Only update if direction changed
-            if player_sprite.current_direction != new_direction {
-                player_sprite.current_direction = new_direction;
+        // Update sprite direction if changed
+        if let Some(dir) = new_direction {
+            if player_sprite.current_direction != dir {
+                player_sprite.current_direction = dir;
                 
                 // Update sprite atlas index based on direction
                 if let Some(ref mut atlas) = sprite.texture_atlas {
-                    atlas.index = match new_direction {
-                        PlayerDirection::Up => 0,
+                    atlas.index = match dir {
+                        PlayerDirection::Up => 3,    // Swapped with Right
                         PlayerDirection::Down => 1,
                         PlayerDirection::Left => 2,
-                        PlayerDirection::Right => 3,
+                        PlayerDirection::Right => 0, // Swapped with Up
                     };
                 }
             }

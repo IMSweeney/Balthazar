@@ -1,4 +1,3 @@
-use avian2d::prelude::RigidBody;
 use bevy::prelude::*;
 use bevy_ecs_tiled::prelude::*;
 
@@ -15,12 +14,5 @@ pub fn load_tiled_map(mut commands: Commands, asset_server: Res<AssetServer>) {
             render_chunk_size: UVec2::new(1, 1),
             y_sort: true,
         },
-    ))
-    .observe(
-            |trigger: On<TiledEvent<ColliderCreated>>, mut commands: Commands| {
-                commands
-                    .entity(trigger.event().origin)
-                    .insert(RigidBody::Static);
-            },
-        );
+    ));
 }
